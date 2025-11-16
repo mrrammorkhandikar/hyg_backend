@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: drbushramirzah-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: COOKIE_NAME
+        value: admin_token
+      - key: ADMIN_USERNAME
+        value: DrBushraMirza
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: REDIS_URI
+        sync: false
+
+  - type: redis
+    name: drbushramirzah-redis
+    ipAllowList: [] # Only accessible from other services

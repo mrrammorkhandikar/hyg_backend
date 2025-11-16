@@ -21,7 +21,8 @@ import contactRoutes from './routes/contact'
 dotenv.config()
 
 const app = express()
-const PORT = process.env.PORT || 8080
+// Use Render's PORT environment variable, fallback to 8080 for local development
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080
 
 // Explicit CORS preflight handling and open origin
 app.use(cors({ origin: '*', methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }))
@@ -50,6 +51,14 @@ app.use('/contact', contactRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'Dr. Bushra Mirzah Blog API' })
+})
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  })
 })
 
 app.listen(PORT, () => {

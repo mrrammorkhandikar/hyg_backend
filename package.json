@@ -4,9 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "start": "node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
     "build": "tsc",
-    "seed": "ts-node src/seed/seedAdmin.ts"
+    "seed": "ts-node src/seed/seedAdmin.ts",
+    "prod": "npm run build && npm start",
+    "render-build": "npm install && npm run build",
+    "render-start": "npm start",
+    "docker:build": "docker build -t drbushramirzah-backend .",
+    "docker:run": "docker run -p 8080:8080 --env-file .env drbushramirzah-backend",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.25.0",
