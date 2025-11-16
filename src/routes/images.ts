@@ -410,7 +410,11 @@ router.post('/move', requireAdmin, async (req, res) => {
           continue
         }
 
-        const filenameOnly = currentFilename.includes('/') ? currentFilename.split('/').pop() : currentFilename
+        const filenameOnly = currentFilename.includes('/') ? currentFilename.split('/').pop() || '' : currentFilename
+        if (!filenameOnly) {
+          errors.push({ imageId, error: `Invalid filename for ${currentFilename}` })
+          continue
+        }
         const newFilename = sanitizedTargetFolder === 'default' ? filenameOnly : `${sanitizedTargetFolder}/${filenameOnly}`
 
         // Copy to new location
