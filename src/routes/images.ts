@@ -335,4 +335,125 @@ router.get('/folders/list', requireAdmin, async (req, res) => {
   }
 })
 
+// POST /api/images/bulk-delete - Delete multiple images
+router.post('/bulk-delete', requireAdmin, async (req, res) => {
+  try {
+    const { imageIds } = req.body
+
+    if (!Array.isArray(imageIds) || imageIds.length === 0) {
+      return res.status(400).json({ error: 'Image IDs array is required' })
+    }
+
+    const filenames = []
+    const errors = []
+
+    // Convert IDs to filenames
+    for (const imageId of imageIds) {
+      try {
+        const filename = Buffer.from(imageId, 'base64').toString('utf-8')
+        filenames.push(filename)
+      } catch (error) {
+        errors.push(`Invalid image ID: ${imageId}`)
+      }
+    }
+
+    if (filenames.length === 0) {
+      return res.status(400).json({ error: 'No valid image IDs provided' })
+    }
+
+    // Delete from Supabase Storage
+    const { error } = await supabase.storage
+      .from('blog-images')
+      .remove(filenames)
+
+    if (error) {
+      console.error('Supabase bulk delete error:', error)
+      return res.status(500).json({ error: 'Failed to delete some images' })
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${filenames.length} image(s)`,
+      deleted: filenames,
+      errors: errors
+    })
+  } catch (error) {
+    console.error('Error in bulk delete:', error)
+    res.status(500).json({ error: 'Failed to perform bulk delete' })
+  }
+})
+
+// POST /api/images/move - Move images to different folder
+router.post('/move', requireAdmin, async (req, res) => {
+  try {
+    const { imageIds, targetFolder } = req.body
+
+    if (!Array.isArray(imageIds) || imageIds.length === 0) {
+      return res.status(400).json({ error: 'Image IDs array is required' })
+    }
+
+    if (!targetFolder || typeof targetFolder !== 'string') {
+      return res.status(400).json({ error: 'Target folder is required' })
+    }
+
+    const sanitizedTargetFolder = targetFolder.replace(/[^a-zA-Z0-9-_]/g, '_')
+    const results = []
+    const errors = []
+
+    for (const imageId of imageIds) {
+      try {
+        const currentFilename = Buffer.from(imageId, 'base64').toString('utf-8')
+
+        // Skip if already in target folder
+        const currentFolder = currentFilename.includes('/') ? currentFilename.split('/')[0] : 'default'
+        if (currentFolder === sanitizedTargetFolder) {
+          continue
+        }
+
+        const filenameOnly = currentFilename.includes('/') ? currentFilename.split('/').pop() : currentFilename
+        const newFilename = sanitizedTargetFolder === 'default' ? filenameOnly : `${sanitizedTargetFolder}/${filenameOnly}`
+
+        // Copy to new location
+        const { error: copyError } = await supabase.storage
+          .from('blog-images')
+          .copy(currentFilename, newFilename)
+
+        if (copyError) {
+          errors.push({ imageId, error: `Failed to copy ${currentFilename}` })
+          continue
+        }
+
+        // Delete from old location
+        const { error: deleteError } = await supabase.storage
+          .from('blog-images')
+          .remove([currentFilename])
+
+        if (deleteError) {
+          errors.push({ imageId, error: `Failed to remove old file ${currentFilename}` })
+          continue
+        }
+
+        results.push({
+          oldFilename: currentFilename,
+          newFilename: newFilename,
+          success: true
+        })
+
+      } catch (error) {
+        errors.push({ imageId, error: error instanceof Error ? error.message : 'Unknown error' })
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Moved ${results.length} image(s) to folder '${sanitizedTargetFolder}'`,
+      moved: results,
+      errors: errors
+    })
+  } catch (error) {
+    console.error('Error in bulk move:', error)
+    res.status(500).json({ error: 'Failed to move images' })
+  }
+})
+
 export default router
