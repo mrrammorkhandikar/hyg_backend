@@ -1,210 +1,222 @@
+// backend/src/routes/imageUpload.ts
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
-import fs from 'fs'
+import { createClient } from '@supabase/supabase-js'
 import { requireAuthenticated, requireAdmin } from '../middleware/requireAdmin'
 
 const router = express.Router()
 
-// Configure multer for blog post uploads
-const blogStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const blogTitle = req.body.blogTitle || 'default'
-    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
-    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Blogs', sanitizedTitle, 'Images')
-    
-    // Create directory if it doesn't exist
-    fs.mkdirSync(uploadPath, { recursive: true })
-    cb(null, uploadPath)
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now()
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    cb(null, `${timestamp}_${sanitizedName}`)
-  }
-})
+// Supabase admin client (service role) - server only
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_KEY
 
-// Configure multer for category icons
-const categoryIconStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Categories')
-    
-    // Create directory if it doesn't exist
-    fs.mkdirSync(uploadPath, { recursive: true })
-    cb(null, uploadPath)
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now()
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    cb(null, `${timestamp}_${sanitizedName}`)
-  }
-})
-
-// Configure multer for tag images
-const tagImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // We'll create the directory in the route handler after req.body is available
-    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Tags')
-    
-    // Create base directory if it doesn't exist
-    fs.mkdirSync(uploadPath, { recursive: true })
-    cb(null, uploadPath)
-  },
-  filename: (req, file, cb) => {
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    cb(null, sanitizedName)
-  }
-})
-
-const fileFilter = (req: any, file: any, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|svg/
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase())
-  const mimetype = allowedTypes.test(file.mimetype)
-  
-  if (mimetype && extname) {
-    return cb(null, true)
-  } else {
-    cb(new Error('Only image files are allowed'))
-  }
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables')
 }
 
-const blogUpload = multer({ 
-  storage: blogStorage,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  },
-  fileFilter
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
 })
 
-const categoryIconUpload = multer({ 
-  storage: categoryIconStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit for icons
-  },
-  fileFilter
+// Use memory storage to avoid writing to the server file system
+const storage = multer.memoryStorage()
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB default limit
 })
 
-const tagImageUpload = multer({ 
-  storage: tagImageStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit for tag images
-  },
-  fileFilter
-})
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
 
-// POST /api/image-upload - Upload images for blog posts
-router.post('/', requireAuthenticated, blogUpload.single('image'), async (req, res) => {
+function sanitizeName(name: string) {
+  return name.replace(/[^a-zA-Z0-9.\-]/g, '_')
+}
+
+/**
+ * Helper: upload buffer to Supabase storage bucket
+ * returns publicUrl string
+ */
+async function uploadBufferToBucket(bucketName: string, objectPath: string, buffer: Buffer, contentType?: string) {
+  const { error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .upload(objectPath, buffer, {
+      contentType: contentType || undefined,
+      upsert: false,
+      cacheControl: '3600'
+    })
+
+  if (error) {
+    throw error
+  }
+
+  const { data: urlData } = await supabaseAdmin.storage
+    .from(bucketName)
+    .getPublicUrl(objectPath)
+
+  if (!urlData || !urlData.publicUrl) {
+    throw new Error('Failed to get public URL from Supabase storage')
+  }
+
+  return urlData.publicUrl
+}
+
+/**
+ * POST /api/image-upload
+ * Accepts form field 'image' (file) and optional 'blogTitle' in body (to create folder).
+ * Uploads to bucket 'blog-images' under <blogTitle>/Images/<filename>
+ */
+router.post('/', requireAuthenticated, upload.single('image'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No image file uploaded' })
     }
 
-    const blogTitle = req.body.blogTitle || 'default'
-    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
-    const relativePath = `/BlogSiteImages/Blogs/${sanitizedTitle}/Images/${req.file.filename}`
-    
-    res.json({
+    const blogTitle = (req.body.blogTitle || 'default').toString()
+    const sanitizedTitle = sanitizeName(blogTitle)
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `${sanitizedTitle}/Images/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
       success: true,
-      url: relativePath,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      blogFolder: sanitizedTitle
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        blogFolder: sanitizedTitle
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Image upload error:', error)
-    res.status(500).json({ error: 'Failed to upload image' })
+    return res.status(500).json({ error: error.message || 'Failed to upload image' })
   }
 })
 
-// POST /api/image-upload/title - Upload title images
-router.post('/title', requireAuthenticated, blogUpload.single('titleImage'), async (req, res) => {
+/**
+ * POST /api/image-upload/title
+ * Accepts form field 'titleImage' (file) and blogTitle.
+ * Uploads to 'blog-images' bucket under <blogTitle>/Images/<filename>
+ */
+router.post('/title', requireAuthenticated, upload.single('titleImage'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No title image file uploaded' })
     }
 
-    const blogTitle = req.body.blogTitle || 'default'
-    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
-    const relativePath = `/BlogSiteImages/Blogs/${sanitizedTitle}/Images/${req.file.filename}`
-    
-    res.json({
+    const blogTitle = (req.body.blogTitle || 'default').toString()
+    const sanitizedTitle = sanitizeName(blogTitle)
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `${sanitizedTitle}/Images/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
       success: true,
-      url: relativePath,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      blogFolder: sanitizedTitle
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        blogFolder: sanitizedTitle
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Title image upload error:', error)
-    res.status(500).json({ error: 'Failed to upload title image' })
+    return res.status(500).json({ error: error.message || 'Failed to upload title image' })
   }
 })
 
-// POST /api/image-upload/category-icon - Upload category icons
-router.post('/category-icon', requireAdmin, categoryIconUpload.single('icon'), async (req, res) => {
+/**
+ * POST /api/image-upload/category-icon
+ * Accepts form field 'icon'
+ * Uploads to bucket 'category-icons' root.
+ */
+router.post('/category-icon', requireAdmin, upload.single('icon'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No icon file uploaded' })
     }
-    
-    const relativePath = `/BlogSiteImages/Categories/${req.file.filename}`
-    
-    res.json({
+
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `${filename}`
+
+    const publicUrl = await uploadBufferToBucket('category-icons', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
       success: true,
-      url: relativePath,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Category icon upload error:', error)
-    res.status(500).json({ error: 'Failed to upload category icon' })
+    return res.status(500).json({ error: error.message || 'Failed to upload category icon' })
   }
 })
 
-// POST /api/image-upload/tag-image - Upload tag images
-router.post('/tag-image', requireAdmin, tagImageUpload.single('tagImage'), async (req, res) => {
+/**
+ * POST /api/image-upload/tag-image
+ * Accepts form field 'tagImage' and 'tagSlug' in body. Saves the image in bucket 'tag-images' under <tagSlug>/<filename>
+ */
+router.post('/tag-image', requireAdmin, upload.single('tagImage'), async (req, res) => {
   try {
-    // Debug logging
-    console.log('=== TAG IMAGE UPLOAD DEBUG ===')
-    console.log('req.body:', req.body)
-    console.log('req.file:', req.file ? { filename: req.file.filename, originalname: req.file.originalname } : 'No file')
-    console.log('tagSlug from body:', req.body.tagSlug)
-    console.log('================================')
-    
-    if (!req.file) {
+    // Debug logging (useful during development)
+    // console.log('=== TAG IMAGE UPLOAD DEBUG ===')
+    // console.log('req.body:', req.body)
+    // console.log('req.file:', req.file ? { filename: req.file.originalname } : 'No file')
+    // console.log('tagSlug from body:', req.body.tagSlug)
+    // console.log('================================')
+
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No tag image file uploaded' })
     }
-    
-    const tagSlug = req.body.tagSlug || 'default'
-    const sanitizedSlug = tagSlug.replace(/[^a-zA-Z0-9]/g, '_')
-    
-    // Create the specific slug directory and move the file
-    const currentFilePath = req.file.path
-    const targetDir = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Tags', sanitizedSlug)
-    const targetFilePath = path.join(targetDir, req.file.filename)
-    
-    // Create target directory if it doesn't exist
-    fs.mkdirSync(targetDir, { recursive: true })
-    
-    // Move file from temp location to target location
-    fs.renameSync(currentFilePath, targetFilePath)
-    
-    const relativePath = `/BlogSiteImages/Tags/${sanitizedSlug}/${req.file.filename}`
-    
-    res.json({
+
+    const tagSlugRaw = (req.body.tagSlug || 'default').toString()
+    const sanitizedSlug = sanitizeName(tagSlugRaw)
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${sanitizeName(req.file.originalname)}`
+    const objectPath = `${sanitizedSlug}/${filename}`
+
+    // ensure slug folder existence is implicit in object path when uploading to storage
+    const publicUrl = await uploadBufferToBucket('tag-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
       success: true,
-      url: relativePath,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      tagSlug: sanitizedSlug
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        tagSlug: sanitizedSlug
+      }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Tag image upload error:', error)
-    res.status(500).json({ error: 'Failed to upload tag image' })
+    return res.status(500).json({ error: error.message || 'Failed to upload tag image' })
   }
 })
 
