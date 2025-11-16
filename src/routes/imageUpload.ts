@@ -1,63 +1,95 @@
 import express from 'express'
 import multer from 'multer'
-import { supabase } from '../db/supabaseClient'
+import path from 'path'
+import fs from 'fs'
 import { requireAuthenticated, requireAdmin } from '../middleware/requireAdmin'
 
 const router = express.Router()
 
-// Configure multer to store files in memory (required for Supabase upload)
-const blogUpload = multer({
-  storage: multer.memoryStorage(),
+// Configure multer for blog post uploads
+const blogStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const blogTitle = req.body.blogTitle || 'default'
+    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
+    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Blogs', sanitizedTitle, 'Images')
+    
+    // Create directory if it doesn't exist
+    fs.mkdirSync(uploadPath, { recursive: true })
+    cb(null, uploadPath)
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now()
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
+    cb(null, `${timestamp}_${sanitizedName}`)
+  }
+})
+
+// Configure multer for category icons
+const categoryIconStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Categories')
+    
+    // Create directory if it doesn't exist
+    fs.mkdirSync(uploadPath, { recursive: true })
+    cb(null, uploadPath)
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now()
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
+    cb(null, `${timestamp}_${sanitizedName}`)
+  }
+})
+
+// Configure multer for tag images
+const tagImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // We'll create the directory in the route handler after req.body is available
+    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Tags')
+    
+    // Create base directory if it doesn't exist
+    fs.mkdirSync(uploadPath, { recursive: true })
+    cb(null, uploadPath)
+  },
+  filename: (req, file, cb) => {
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
+    cb(null, sanitizedName)
+  }
+})
+
+const fileFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|svg/
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase())
+  const mimetype = allowedTypes.test(file.mimetype)
+  
+  if (mimetype && extname) {
+    return cb(null, true)
+  } else {
+    cb(new Error('Only image files are allowed'))
+  }
+}
+
+const blogUpload = multer({ 
+  storage: blogStorage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
-  fileFilter: (req: any, file: any, cb: any) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/
-    const extname = allowedTypes.test(file.originalname.toLowerCase().split('.').pop())
-    const mimetype = allowedTypes.test(file.mimetype)
-
-    if (mimetype && extname) {
-      return cb(null, true)
-    } else {
-      cb(new Error('Only image files are allowed'))
-    }
-  }
+  fileFilter
 })
 
-const categoryIconUpload = multer({
-  storage: multer.memoryStorage(),
+const categoryIconUpload = multer({ 
+  storage: categoryIconStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit for icons
   },
-  fileFilter: (req: any, file: any, cb: any) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/
-    const extname = allowedTypes.test(file.originalname.toLowerCase().split('.').pop())
-    const mimetype = allowedTypes.test(file.mimetype)
-
-    if (mimetype && extname) {
-      return cb(null, true)
-    } else {
-      cb(new Error('Only image files are allowed'))
-    }
-  }
+  fileFilter
 })
 
-const tagImageUpload = multer({
-  storage: multer.memoryStorage(),
+const tagImageUpload = multer({ 
+  storage: tagImageStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit for tag images
   },
-  fileFilter: (req: any, file: any, cb: any) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/
-    const extname = allowedTypes.test(file.originalname.toLowerCase().split('.').pop())
-    const mimetype = allowedTypes.test(file.mimetype)
-
-    if (mimetype && extname) {
-      return cb(null, true)
-    } else {
-      cb(new Error('Only image files are allowed'))
-    }
-  }
+  fileFilter
 })
 
 // POST /api/image-upload - Upload images for blog posts
@@ -67,36 +99,17 @@ router.post('/', requireAuthenticated, blogUpload.single('image'), async (req, r
       return res.status(400).json({ error: 'No image file uploaded' })
     }
 
-    // Generate unique filename with timestamp
-    const timestamp = Date.now()
-    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `blog/${timestamp}_${sanitizedName}`
-
-    // Upload to Supabase Storage under blogs folder
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      })
-
-    if (error) {
-      console.error('Supabase upload error:', error)
-      return res.status(500).json({ error: 'Failed to upload image to storage' })
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filename)
-
+    const blogTitle = req.body.blogTitle || 'default'
+    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
+    const relativePath = `/BlogSiteImages/Blogs/${sanitizedTitle}/Images/${req.file.filename}`
+    
     res.json({
       success: true,
-      url: publicUrl,
-      filename: filename,
+      url: relativePath,
+      filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
-      blogFolder: filename.split('/')[0]
+      blogFolder: sanitizedTitle
     })
   } catch (error) {
     console.error('Image upload error:', error)
@@ -111,36 +124,17 @@ router.post('/title', requireAuthenticated, blogUpload.single('titleImage'), asy
       return res.status(400).json({ error: 'No title image file uploaded' })
     }
 
-    // Generate unique filename with timestamp
-    const timestamp = Date.now()
-    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `blog/${timestamp}_${sanitizedName}`
-
-    // Upload to Supabase Storage under blogs folder
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      })
-
-    if (error) {
-      console.error('Supabase upload error:', error)
-      return res.status(500).json({ error: 'Failed to upload title image to storage' })
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filename)
-
+    const blogTitle = req.body.blogTitle || 'default'
+    const sanitizedTitle = blogTitle.replace(/[^a-zA-Z0-9]/g, '_')
+    const relativePath = `/BlogSiteImages/Blogs/${sanitizedTitle}/Images/${req.file.filename}`
+    
     res.json({
       success: true,
-      url: publicUrl,
-      filename: filename,
+      url: relativePath,
+      filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
-      blogFolder: filename.split('/')[0]
+      blogFolder: sanitizedTitle
     })
   } catch (error) {
     console.error('Title image upload error:', error)
@@ -154,34 +148,13 @@ router.post('/category-icon', requireAdmin, categoryIconUpload.single('icon'), a
     if (!req.file) {
       return res.status(400).json({ error: 'No icon file uploaded' })
     }
-
-    // Generate unique filename with timestamp
-    const timestamp = Date.now()
-    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `category_icons/${timestamp}_${sanitizedName}`
-
-    // Upload to Supabase Storage under category_icons folder
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      })
-
-    if (error) {
-      console.error('Supabase upload error:', error)
-      return res.status(500).json({ error: 'Failed to upload category icon to storage' })
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filename)
-
+    
+    const relativePath = `/BlogSiteImages/Categories/${req.file.filename}`
+    
     res.json({
       success: true,
-      url: publicUrl,
-      filename: filename,
+      url: relativePath,
+      filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size
     })
@@ -200,41 +173,31 @@ router.post('/tag-image', requireAdmin, tagImageUpload.single('tagImage'), async
     console.log('req.file:', req.file ? { filename: req.file.filename, originalname: req.file.originalname } : 'No file')
     console.log('tagSlug from body:', req.body.tagSlug)
     console.log('================================')
-
+    
     if (!req.file) {
       return res.status(400).json({ error: 'No tag image file uploaded' })
     }
-
+    
     const tagSlug = req.body.tagSlug || 'default'
     const sanitizedSlug = tagSlug.replace(/[^a-zA-Z0-9]/g, '_')
-
-    // Generate unique filename with timestamp
-    const timestamp = Date.now()
-    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `tags/${sanitizedSlug}/${timestamp}_${sanitizedName}`
-
-    // Upload to Supabase Storage under tags/tagSlug folder
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      })
-
-    if (error) {
-      console.error('Supabase upload error:', error)
-      return res.status(500).json({ error: 'Failed to upload tag image to storage' })
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filename)
-
+    
+    // Create the specific slug directory and move the file
+    const currentFilePath = req.file.path
+    const targetDir = path.join(process.cwd(), '..', 'frontend', 'public', 'BlogSiteImages', 'Tags', sanitizedSlug)
+    const targetFilePath = path.join(targetDir, req.file.filename)
+    
+    // Create target directory if it doesn't exist
+    fs.mkdirSync(targetDir, { recursive: true })
+    
+    // Move file from temp location to target location
+    fs.renameSync(currentFilePath, targetFilePath)
+    
+    const relativePath = `/BlogSiteImages/Tags/${sanitizedSlug}/${req.file.filename}`
+    
     res.json({
       success: true,
-      url: publicUrl,
-      filename: filename,
+      url: relativePath,
+      filename: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
       tagSlug: sanitizedSlug
