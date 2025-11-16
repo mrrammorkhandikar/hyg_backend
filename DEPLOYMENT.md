@@ -9,7 +9,38 @@ This document outlines how to deploy the Dr. Bushra Mirzah Blog backend applicat
 - **Redis instance** (automatically provisioned by Render)
 - **Alternative**: Node.js 18+ and Docker for local/containerized deployment
 
-## Render Deployment (Recommended)
+## Vercel Deployment
+
+For serverless deployment, use the `vercel.json` configuration. This deploys the Express app as a serverless function.
+
+### Prerequisites
+- Vercel account
+- GitHub repository connected to Vercel
+- PostgreSQL via Supabase
+- Redis (Vercel provides Redis in paid plans, or use external)
+
+### Step 1: Set Environment Variables in Vercel Dashboard
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY`
+- `COOKIE_SECRET` (generate a secure random string)
+- `COOKIE_NAME` = admin_token
+- `ADMIN_USERNAME` = DrBushraMirza
+- `ADMIN_PASSWORD` (secure password)
+- `ADMIN_EMAIL`
+- `REDIS_URI` (configure Redis connection)
+- `NODE_ENV` = production
+
+### Step 2: Deploy
+1. Import the repository on Vercel
+2. Select the backend directory if deploying separately
+3. Vercel will build using TypeScript and deploy as serverless function
+
+### Step 3: Post-Deployment
+1. Verify the health endpoint `/health`
+2. Run migrations if needed
+
+## Render Deployment (Recommended for full servers)
 
 ### Step 1: Connect Repository
 1. Connect your GitHub repository to Render
