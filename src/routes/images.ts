@@ -34,10 +34,16 @@ router.get('/', requireAdmin, async (req, res) => {
     const sortBy = req.query.sortBy as string || 'created_at'
     const sortOrder = req.query.sortOrder as string || 'desc'
 
+    // Map folder names to Supabase bucket structure
+    let targetFolder = folder || ''
+    if (folder === 'blogs') targetFolder = 'blog'
+    if (folder === 'categories') targetFolder = 'category_icons'
+    // tags folder stays the same
+
     // List files from Supabase Storage
     let { data: files, error } = await supabase.storage
-      .from('blog-images')
-      .list(folder || '', {
+      .from('Images')
+      .list(targetFolder || '', {
         limit: 1000, // Get more files to filter/search
         sortBy: { column: sortBy, order: sortOrder }
       })
@@ -60,9 +66,10 @@ router.get('/', requireAdmin, async (req, res) => {
       })
       .map(file => {
         const ext = file.name.split('.').pop() || ''
+        const fullPath = targetFolder ? `${targetFolder}/${file.name}` : file.name
         const { data: { publicUrl } } = supabase.storage
-          .from('blog-images')
-          .getPublicUrl(folder ? `${folder}/${file.name}` : file.name)
+          .from('Images')
+          .getPublicUrl(fullPath)
 
         return {
           id: Buffer.from(file.name).toString('base64'),
@@ -122,7 +129,7 @@ router.post('/', requireAdmin, imageUpload.single('image'), async (req, res) => 
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('blog-images')
+      .from('Images')
       .upload(filename, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
@@ -135,7 +142,7 @@ router.post('/', requireAdmin, imageUpload.single('image'), async (req, res) => 
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('blog-images')
+      .from('Images')
       .getPublicUrl(filename)
 
     res.json({

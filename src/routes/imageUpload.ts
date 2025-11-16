@@ -70,11 +70,11 @@ router.post('/', requireAuthenticated, blogUpload.single('image'), async (req, r
     // Generate unique filename with timestamp
     const timestamp = Date.now()
     const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `blogs/${timestamp}_${sanitizedName}`
+    const filename = `blog/${timestamp}_${sanitizedName}`
 
     // Upload to Supabase Storage under blogs folder
     const { data, error } = await supabase.storage
-      .from('blog-images')
+      .from('Images')
       .upload(filename, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
@@ -87,7 +87,7 @@ router.post('/', requireAuthenticated, blogUpload.single('image'), async (req, r
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('blog-images')
+      .from('Images')
       .getPublicUrl(filename)
 
     res.json({
@@ -114,11 +114,11 @@ router.post('/title', requireAuthenticated, blogUpload.single('titleImage'), asy
     // Generate unique filename with timestamp
     const timestamp = Date.now()
     const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `blogs/${timestamp}_${sanitizedName}`
+    const filename = `blog/${timestamp}_${sanitizedName}`
 
     // Upload to Supabase Storage under blogs folder
     const { data, error } = await supabase.storage
-      .from('blog-images')
+      .from('Images')
       .upload(filename, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
@@ -131,7 +131,7 @@ router.post('/title', requireAuthenticated, blogUpload.single('titleImage'), asy
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('blog-images')
+      .from('Images')
       .getPublicUrl(filename)
 
     res.json({
@@ -158,11 +158,11 @@ router.post('/category-icon', requireAdmin, categoryIconUpload.single('icon'), a
     // Generate unique filename with timestamp
     const timestamp = Date.now()
     const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filename = `categories/${timestamp}_${sanitizedName}`
+    const filename = `category_icons/${timestamp}_${sanitizedName}`
 
-    // Upload to Supabase Storage under categories folder
+    // Upload to Supabase Storage under category_icons folder
     const { data, error } = await supabase.storage
-      .from('blog-images')
+      .from('Images')
       .upload(filename, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
@@ -175,7 +175,7 @@ router.post('/category-icon', requireAdmin, categoryIconUpload.single('icon'), a
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('blog-images')
+      .from('Images')
       .getPublicUrl(filename)
 
     res.json({
@@ -215,7 +215,7 @@ router.post('/tag-image', requireAdmin, tagImageUpload.single('tagImage'), async
 
     // Upload to Supabase Storage under tags/tagSlug folder
     const { data, error } = await supabase.storage
-      .from('blog-images')
+      .from('Images')
       .upload(filename, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
@@ -228,7 +228,7 @@ router.post('/tag-image', requireAdmin, tagImageUpload.single('tagImage'), async
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('blog-images')
+      .from('Images')
       .getPublicUrl(filename)
 
     res.json({
