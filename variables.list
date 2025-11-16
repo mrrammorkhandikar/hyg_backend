@@ -1,0 +1,21 @@
+# Backend Environment Variables for Vercel Deployment
+# Copy these to your Vercel dashboard
+
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ANON_KEY=your_anon_key
+
+# Admin credentials (change these!)
+ADMIN_USERNAME=DrBushraMirza
+ADMIN_PASSWORD=secure_password_here
+ADMIN_EMAIL=admin@example.com
+
+# Security
+COOKIE_SECRET=your_secure_random_secret_32_chars_min
+COOKIE_NAME=admin_token
+
+# Optional: Redis (if using, add external Redis URL)
+REDIS_URI=redis://your-redis-url:port
+
+# Build setting
+NODE_ENV=production
