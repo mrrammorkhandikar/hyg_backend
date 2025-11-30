@@ -10,7 +10,10 @@ const router = express.Router()
 const PREDEFINED_SLUGS = [
   'Oral Hygiene Shelf',
   'Mental Hygiene Shelf',
-  'Holistic Health Hygiene Shelf'
+  'Holistic Health Hygiene Shelf',
+  'Kids Hygiene Shelf',
+  'Home Hygiene Shelf',
+  'Food Hygiene Shelf',
 ]
 
 // Validate tag type and associated fields
