@@ -8,10 +8,9 @@ const router = express.Router()
 
 // Predefined slug options for regular tags
 const PREDEFINED_SLUGS = [
-  'Badass Lifestyle',
-  'Hygiene Freaks Corner',
-  'Working Mothers One Stop Solution',
-  'Post Partum Maintenance'
+  'Oral Hygiene Shelf',
+  'Mental Hygiene Shelf',
+  'Holistic Health Hygiene Shelf'
 ]
 
 // Validate tag type and associated fields

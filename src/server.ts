@@ -12,6 +12,7 @@ import affiliateLinksRoutes from './routes/affiliateLinks'
 import affiliateTrackingRoutes from './routes/affiliateTracking'
 import categoriesRoutes from './routes/categories'
 import tagsRoutes from './routes/tags'
+import teamsRoutes from './routes/teams'
 import seoTagsRoutes from './routes/seoTags'
 import llmRoutes from './routes/llm'
 import commentsRoutes from './routes/comments'
@@ -43,6 +44,7 @@ app.use('/affiliate-links', affiliateLinksRoutes)
 app.use('/affiliate-tracking', affiliateTrackingRoutes)
 app.use('/categories', categoriesRoutes)
 app.use('/tags', tagsRoutes)
+app.use('/teams', teamsRoutes)
 app.use('/seo-tags', seoTagsRoutes)
 app.use('/llm', llmRoutes)
 app.use('/comments', commentsRoutes)

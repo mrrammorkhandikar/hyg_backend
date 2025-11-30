@@ -220,4 +220,74 @@ router.post('/tag-image', requireAdmin, upload.single('tagImage'), async (req, r
   }
 })
 
+/**
+ * POST /api/image-upload/team-image
+ * Accepts form field 'teamImage' - Uploads team image to bucket 'blog-images' under 'teams/'
+ */
+router.post('/team-image', requireAdmin, upload.single('teamImage'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No team image file uploaded' })
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `teams/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
+    })
+  } catch (error: any) {
+    console.error('Team image upload error:', error)
+    return res.status(500).json({ error: error.message || 'Failed to upload team image' })
+  }
+})
+
+/**
+ * POST /api/image-upload/author-profile
+ * Accepts form field 'authorImage' - Uploads author profile image to bucket 'blog-images' under 'authors/'
+ */
+router.post('/author-profile', requireAdmin, upload.single('authorImage'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No author image file uploaded' })
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `authors/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
+    })
+  } catch (error: any) {
+    console.error('Author image upload error:', error)
+    return res.status(500).json({ error: error.message || 'Failed to upload author image' })
+  }
+})
+
 export default router

@@ -1,7 +1,20 @@
 import express from 'express'
 import bcrypt from 'bcrypt'
 import { supabase } from '../db/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
 import { requireAdmin, requireAuthenticated, UserPayload } from '../middleware/requireAdmin'
+
+// Supabase admin client (service role) - for admin operations
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_KEY
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables')
+}
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+})
 
 const router = express.Router()
 
@@ -15,12 +28,32 @@ export type Author = {
   created_at: string;
   updated_at: string;
   email: string | null;
+  authers_image: string | null;
+  description: string | null;
+  title: string | null;
+  socialmedia: any[] | null;
 };
+
+// GET /authors - List published authors (Public)
+router.get('/published', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('authors')
+      .select('id, username, blog_name, email, authers_image, description, title, socialmedia')
+      .eq('status', 'publish')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // GET /authors - List all authors (Admin only)
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('authors')
       .select('*')
       .order('created_at', { ascending: false });
@@ -36,7 +69,7 @@ router.get('/', requireAdmin, async (req, res) => {
 router.get('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('authors')
       .select('*')
       .eq('id', id)
@@ -53,14 +86,14 @@ router.get('/:id', requireAdmin, async (req, res) => {
 // POST /authors - Create new author (Admin only)
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { username, password, email, blog, blog_name, status = 'draft' } = req.body;
+    const { username, password, email, blog, blog_name, status = 'draft', authers_image, description, title, socialmedia } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('authors')
       .insert([{
         username,
@@ -68,7 +101,11 @@ router.post('/', requireAdmin, async (req, res) => {
         email: email || null,
         blog: blog || null,
         blog_name: blog_name || null,
-        status: status || 'draft'
+        status: status || 'draft',
+        authers_image: authers_image || null,
+        description: description || null,
+        title: title || null,
+        socialmedia: socialmedia || []
       }])
       .select()
       .single();
@@ -84,7 +121,7 @@ router.post('/', requireAdmin, async (req, res) => {
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, email, blog, blog_name, status } = req.body;
+    const { username, password, email, blog, blog_name, status, authers_image, description, title, socialmedia } = req.body;
 
     const updatePayload: any = {};
     if (username) updatePayload.username = username;
@@ -92,12 +129,16 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (blog !== undefined) updatePayload.blog = blog;
     if (blog_name !== undefined) updatePayload.blog_name = blog_name;
     if (status !== undefined) updatePayload.status = status;
+    if (authers_image !== undefined) updatePayload.authers_image = authers_image;
+    if (description !== undefined) updatePayload.description = description;
+    if (title !== undefined) updatePayload.title = title;
+    if (socialmedia !== undefined) updatePayload.socialmedia = socialmedia;
 
     if (password) {
       updatePayload.password = await bcrypt.hash(password, 10);
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('authors')
       .update(updatePayload)
       .eq('id', id)
@@ -115,7 +156,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('authors').delete().eq('id', id);
+    const { error } = await supabaseAdmin.from('authors').delete().eq('id', id);
     if (error) throw error;
     res.status(204).send();
   } catch (error: any) {
@@ -148,7 +189,7 @@ router.get('/me', requireAuthenticated, async (req, res) => {
       // Get author profile
       const { data, error } = await supabase
         .from('authors')
-        .select('id, username, blog, blog_name, status, email, created_at, updated_at')
+        .select('id, username, blog, blog_name, status, email, created_at, updated_at, authers_image, description, title')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -173,7 +214,7 @@ router.put('/me', requireAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'User ID not found in token' });
     }
 
-    const { email, password, blog_name } = req.body;
+    const { email, password, blog_name, authers_image, description } = req.body;
 
     if (user.role === 'admin') {
       // Update admin profile
@@ -197,6 +238,8 @@ router.put('/me', requireAuthenticated, async (req, res) => {
       const updatePayload: any = {};
       if (blog_name !== undefined) updatePayload.blog_name = blog_name;
       if (email !== undefined) updatePayload.email = email;
+      if (authers_image !== undefined) updatePayload.authers_image = authers_image;
+      if (description !== undefined) updatePayload.description = description;
       if (password) {
         updatePayload.password = await bcrypt.hash(password, 10);
       }
