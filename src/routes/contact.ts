@@ -1,5 +1,6 @@
 import express from 'express'
 import { supabase } from '../db/supabaseClient'
+import { requireAdmin } from '../middleware/requireAdmin'
 
 const router = express.Router()
 
@@ -47,8 +48,8 @@ router.post('/', async (req, res) => {
   }
 })
 
-// GET /contact - Get all contact messages (admin only - you might want to add auth here)
-router.get('/', async (req, res) => {
+// GET /contact - Get all contact messages (admin only)
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('contact_messages')
@@ -74,6 +75,27 @@ router.get('/user/:uniqueUserId', async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message })
     res.json(data)
+  } catch (err) {
+    return res.status(500).json({ error: (err as any).message })
+  }
+})
+
+// DELETE /contact/:id - Delete a contact message (admin only)
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const { data, error } = await supabase
+      .from('contact_messages')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return res.status(500).json({ error: error.message })
+    if (!data) return res.status(404).json({ error: 'Contact message not found' })
+
+    res.json({ message: 'Contact message deleted successfully' })
   } catch (err) {
     return res.status(500).json({ error: (err as any).message })
   }
