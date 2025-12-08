@@ -290,4 +290,75 @@ router.post('/author-profile', requireAdmin, upload.single('authorImage'), async
   }
 })
 
+/**
+ * POST /api/image-upload/product-images
+ * Accepts form field 'productImage' - Uploads product images to bucket 'blog-images' under 'products/'
+ */
+router.post('/product-images', requireAdmin, upload.single('productImage'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No product image file uploaded' })
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `products/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
+    })
+  } catch (error: any) {
+    console.error('Product image upload error:', error)
+    return res.status(500).json({ error: error.message || 'Failed to upload product image' })
+  }
+})
+
+/**
+ * POST /api/image-upload/product-pdf
+ * Accepts form field 'productPdf' - Uploads product PDF files to bucket 'blog-images' under 'products/pdfs/'
+ */
+router.post('/product-pdf', requireAdmin, upload.single('productPdf'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No product PDF file uploaded' })
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase()
+    const allowedPdfExtensions = ['.pdf']
+    if (!allowedPdfExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Unsupported file type. Only PDF files are allowed.' })
+    }
+
+    const filename = `${Date.now()}_${sanitizeName(req.file.originalname)}`
+    const objectPath = `products/pdfs/${filename}`
+
+    const publicUrl = await uploadBufferToBucket('blog-images', objectPath, req.file.buffer, req.file.mimetype)
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      data: {
+        filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
+    })
+  } catch (error: any) {
+    console.error('Product PDF upload error:', error)
+    return res.status(500).json({ error: error.message || 'Failed to upload product PDF' })
+  }
+})
+
 export default router

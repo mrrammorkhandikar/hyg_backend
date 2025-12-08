@@ -7,6 +7,7 @@ import uploadRoutes from './routes/upload'
 import imageUploadRoutes from './routes/imageUpload'
 import imagesRoutes from './routes/images'
 import authorsRoutes from './routes/authors'
+import productsRoutes from './routes/products'
 
 import affiliateLinksRoutes from './routes/affiliateLinks'
 import affiliateTrackingRoutes from './routes/affiliateTracking'
@@ -39,6 +40,7 @@ app.use('/upload', uploadRoutes)
 app.use('/image-upload', imageUploadRoutes)
 app.use('/images', imagesRoutes)
 app.use('/authors', authorsRoutes)
+app.use('/products', productsRoutes)
 
 app.use('/affiliate-links', affiliateLinksRoutes)
 app.use('/affiliate-tracking', affiliateTrackingRoutes)
