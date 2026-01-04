@@ -19,6 +19,7 @@ import llmRoutes from './routes/llm'
 import commentsRoutes from './routes/comments'
 import likesRoutes from './routes/likes'
 import contactRoutes from './routes/contact'
+import jobApplicationsRoutes from './routes/jobApplications'
 
 dotenv.config()
 
@@ -52,6 +53,7 @@ app.use('/llm', llmRoutes)
 app.use('/comments', commentsRoutes)
 app.use('/likes', likesRoutes)
 app.use('/contact', contactRoutes)
+app.use('/job-applications', jobApplicationsRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'Dr. Bushra Mirzah Blog API' })
