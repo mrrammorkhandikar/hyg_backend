@@ -66,6 +66,20 @@ async function runMigration() {
       console.log('Blog count and triggers added successfully!');
     }
 
+    // Create newsletter_subscribers table
+    console.log('Creating newsletter_subscribers table...');
+    const newsletterSql = fs.readFileSync(path.join(__dirname, 'migrations', 'create_newsletter_subscribers_table.sql'), 'utf8');
+
+    const { error: newsletterError } = await supabase.rpc('exec_sql', {
+      sql: newsletterSql
+    });
+
+    if (newsletterError) {
+      console.log('Error with newsletter subscribers migration:', newsletterError);
+    } else {
+      console.log('Newsletter subscribers table created successfully!');
+    }
+
     console.log('All migrations completed!');
 
     // Test if tables exist by querying them

@@ -20,6 +20,11 @@ import commentsRoutes from './routes/comments'
 import likesRoutes from './routes/likes'
 import contactRoutes from './routes/contact'
 import jobApplicationsRoutes from './routes/jobApplications'
+import newsletterRoutes from './routes/newsletter'
+import emailManagerRoutes from './routes/emailManager'
+import subscribersRoutes from './routes/subscribers'
+import analyticsRoutes from './routes/analytics'
+import './services/schedulerService'
 
 dotenv.config()
 
@@ -54,6 +59,10 @@ app.use('/comments', commentsRoutes)
 app.use('/likes', likesRoutes)
 app.use('/contact', contactRoutes)
 app.use('/job-applications', jobApplicationsRoutes)
+app.use('/newsletter', newsletterRoutes)
+app.use('/email-manager', emailManagerRoutes)
+app.use('/subscribers', subscribersRoutes)
+app.use('/analytics', analyticsRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'Dr. Bushra Mirzah Blog API' })

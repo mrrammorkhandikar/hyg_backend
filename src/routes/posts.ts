@@ -119,8 +119,20 @@ router.post('/', requireAuthenticated, restrictAuthorActions, async (req, res) =
     seo_keywords: payload.seo_keywords
   } : suggestSeo(payload.title, payload.excerpt)
 
+  // Allow scheduling fields for admins during creation
+  const allowedInsertKeys = [
+    'title','excerpt','content','content_blocks','category_id','tags',
+    'image_url','seo_title','seo_description','seo_keywords','affiliate_links',
+    'published','featured','author','shedule_publish'
+  ]
+
+  const safePayload: Record<string, any> = {}
+  for (const [k, v] of Object.entries(payload)) {
+    if (allowedInsertKeys.includes(k)) safePayload[k] = v
+  }
+
   const insert = {
-    ...payload,
+    ...safePayload,
     slug,
     seo_title: seo.seo_title,
     seo_description: seo.seo_description,
@@ -147,7 +159,7 @@ router.put('/:id', requirePostAccess, restrictAuthorActions, async (req, res) =>
   const allowedKeys = [
     'title','excerpt','content','content_blocks','category_id','tags',
     'image_url','seo_title','seo_description','seo_keywords','affiliate_links',
-    'published','featured','author','updated_at'
+    'published','featured','author','updated_at','shedule_publish'
   ]
   const safeUpdates: Record<string, any> = {}
   for (const [k, v] of Object.entries(updates)) {
