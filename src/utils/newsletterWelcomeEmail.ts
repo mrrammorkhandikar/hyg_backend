@@ -11,7 +11,7 @@ interface NewsletterWelcomeEmailOptions {
  */
 export async function sendNewsletterWelcomeEmail(options: NewsletterWelcomeEmailOptions): Promise<void> {
   const subject = '🎉 Welcome to HygieneShelf - Your Health Journey Starts Here!';
-  const from = options.from || process.env.GMAIL_USER || 'noreply@hygieneshef.com';
+  const from = options.from || process.env.GMAIL_USER || 'hygieneshelf.news@gmail.com';
 
   // HygieneShelf brand colors
   const primaryColor = '#0f766e';

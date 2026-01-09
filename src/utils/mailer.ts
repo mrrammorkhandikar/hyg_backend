@@ -65,31 +65,47 @@ export function createTransporter(): any {
   const hasSMTP = process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS;
   const hasOAuth2 = process.env.GMAIL_USER && process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
 
+  console.log('🔧 Creating email transporter...');
+  console.log('SMTP available:', hasSMTP);
+  console.log('OAuth2 available:', hasOAuth2);
+
   if (hasSMTP) {
+    console.log('📧 Trying SMTP transport first...');
     try {
-      // Try SMTP first (more reliable for basic email sending)
       const transporter = createSMTPTransporter();
-      // Test the transporter immediately to catch SMTP issues
+      console.log('✅ SMTP transporter created successfully');
       return transporter;
     } catch (smtpError) {
-      console.log('⚠️  SMTP failed, trying Gmail OAuth2 fallback...');
+      console.error('❌ SMTP transporter creation failed:', smtpError);
+      console.log('🔄 Trying Gmail OAuth2 fallback...');
       if (hasOAuth2) {
         try {
-          return createGmailTransporter();
+          const transporter = createGmailTransporter();
+          console.log('✅ Gmail OAuth2 transporter created successfully');
+          return transporter;
         } catch (oauthError) {
-          console.error('❌ Both SMTP and OAuth2 failed:', smtpError, oauthError);
-          throw new Error('No email transport method available');
+          console.error('❌ Gmail OAuth2 transporter creation failed:', (oauthError as Error).message);
+          throw oauthError;
         }
       } else {
-        console.log('⚠️  SMTP failed, no OAuth2 fallback available');
+        console.error('❌ SMTP failed and no OAuth2 fallback configured');
         throw new Error('SMTP failed and no OAuth2 fallback configured');
       }
     }
   } else if (hasOAuth2) {
     console.log('📧 Using Gmail OAuth2 transport (SMTP not configured)');
-    return createGmailTransporter();
+    try {
+      const transporter = createGmailTransporter();
+      console.log('✅ Gmail OAuth2 transporter created successfully');
+      return transporter;
+    } catch (oauthError) {
+      console.error('❌ Gmail OAuth2 transporter creation failed:');
+      throw oauthError;
+    }
   } else {
-    throw new Error('No email transport method configured (neither SMTP nor OAuth2)');
+    const error = new Error('No email transport method configured (neither SMTP nor OAuth2)');
+    console.error('❌', error.message);
+    throw error;
   }
 }
 

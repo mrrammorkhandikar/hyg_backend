@@ -349,27 +349,55 @@ router.post('/:id/send', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'No recipients found for this email' })
     }
 
-    // Send email to all recipients
+    // Send email to all recipients with rate limiting and better error handling
     const recipients = email.emails.list
     const results = []
     let successCount = 0
     let failureCount = 0
 
-    for (const recipient of recipients) {
-      try {
-        await sendEmail({
-          to: recipient.email,
-          subject: email.the_mail.subject,
-          html: email.the_mail.html
-        })
-        results.push({ email: recipient.email, status: 'success' })
-        successCount++
-      } catch (emailError: any) {
-        console.error(`Failed to send email to ${recipient.email}:`, emailError)
-        results.push({ email: recipient.email, status: 'failed', error: emailError.message })
-        failureCount++
+    console.log(`📧 Starting to send email "${email.the_mail.subject}" to ${recipients.length} recipients`)
+
+    // Gmail rate limiting: max 50 emails per minute, 500 per day
+    const BATCH_SIZE = 10 // Send in batches of 10
+    const DELAY_BETWEEN_BATCHES = 2000 // 2 seconds between batches
+    const DELAY_BETWEEN_EMAILS = 500 // 0.5 seconds between individual emails
+
+    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+      const batch = recipients.slice(i, i + BATCH_SIZE)
+      console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(recipients.length / BATCH_SIZE)} (${batch.length} emails)`)
+
+      // Send emails in this batch
+      for (const recipient of batch) {
+        try {
+          console.log(`📤 Sending to: ${recipient.email}`)
+          await sendEmail({
+            to: recipient.email,
+            subject: email.the_mail.subject,
+            html: email.the_mail.html
+          })
+          console.log(`✅ Successfully sent to: ${recipient.email}`)
+          results.push({ email: recipient.email, status: 'success' })
+          successCount++
+
+          // Small delay between individual emails
+          if (i + batch.length < recipients.length) {
+            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_EMAILS))
+          }
+        } catch (emailError: any) {
+          console.error(`❌ Failed to send email to ${recipient.email}:`, emailError.message)
+          results.push({ email: recipient.email, status: 'failed', error: emailError.message })
+          failureCount++
+        }
+      }
+
+      // Delay between batches (except for the last batch)
+      if (i + BATCH_SIZE < recipients.length) {
+        console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`)
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES))
       }
     }
+
+    console.log(`📊 Email sending completed: ${successCount} sent, ${failureCount} failed`)
 
     // Update email status and sent time
     const { data, error } = await supabase
@@ -398,6 +426,117 @@ router.post('/:id/send', requireAdmin, async (req, res) => {
     })
   } catch (err) {
     return res.status(500).json({ error: (err as any).message })
+  }
+})
+
+// POST /email-manager/test-send - Test email sending through API
+router.post('/test-send', requireAdmin, async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' })
+    }
+
+    console.log(`🧪 Testing email send to: ${email}`)
+    console.log('Environment check:')
+    console.log('- GMAIL_USER:', process.env.GMAIL_USER ? 'Set' : 'NOT SET')
+    console.log('- GMAIL_CLIENT_ID:', process.env.GMAIL_CLIENT_ID ? 'Set' : 'NOT SET')
+    console.log('- GMAIL_REFRESH_TOKEN:', process.env.GMAIL_REFRESH_TOKEN ? 'Set (len: ' + process.env.GMAIL_REFRESH_TOKEN?.length + ')' : 'NOT SET')
+    console.log('- SMTP_HOST:', process.env.SMTP_HOST ? 'Set' : 'NOT SET')
+
+    await sendEmail({
+      to: email,
+      subject: 'HygieneShelf Email System Test - Please Check Your Inbox',
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Email System Test</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+            .header { background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); color: white; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+            .content { padding: 30px; }
+            .status { background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 20px; margin: 20px 0; }
+            .status h3 { color: #0ea5e9; margin-top: 0; }
+            .info { background-color: #f8fafc; padding: 15px; border-radius: 4px; margin: 15px 0; }
+            .success { color: #059669; font-weight: 600; }
+            .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📧 Email System Test</h1>
+              <p>HygieneShelf Communication Verification</p>
+            </div>
+
+            <div class="content">
+              <p>Hello,</p>
+
+              <p>This is an automated test email from the HygieneShelf email system to verify that our communication channels are working properly.</p>
+
+              <div class="status">
+                <h3>✅ Email Delivery Successful</h3>
+                <p>If you're reading this email, our email system is functioning correctly!</p>
+              </div>
+
+              <div class="info">
+                <strong>Test Details:</strong><br/>
+                • Sent: ${new Date().toISOString()}<br/>
+                • From: HygieneShelf Email System<br/>
+                • Method: ${process.env.SMTP_HOST ? 'SMTP' : 'OAuth2'}<br/>
+                • Status: Delivery Confirmed
+              </div>
+
+              <p><strong>Next Steps:</strong></p>
+              <ul>
+                <li>Check your inbox for this message</li>
+                <li>If you see this in spam/junk, mark it as "Not Spam"</li>
+                <li>Our system is now ready for regular newsletters</li>
+              </ul>
+
+              <p>Thank you for helping us test our email system!</p>
+
+              <p>Best regards,<br/>
+              <strong>HygieneShelf Team</strong></p>
+            </div>
+
+            <div class="footer">
+              <p><strong>HygieneShelf</strong> - Promoting Health & Hygiene</p>
+              <p>This is a system test email. No action required.</p>
+              <p>© ${new Date().getFullYear()} HygieneShelf. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    })
+
+    console.log(`✅ Test email sent successfully to ${email}`)
+    res.json({
+      message: 'Test email sent successfully',
+      recipient: email,
+      timestamp: new Date().toISOString(),
+      environment: {
+        gmailUser: !!process.env.GMAIL_USER,
+        gmailClientId: !!process.env.GMAIL_CLIENT_ID,
+        gmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
+        smtpHost: !!process.env.SMTP_HOST
+      }
+    })
+
+  } catch (error: any) {
+    console.error('❌ Failed to send test email:', error)
+    res.status(500).json({
+      error: 'Failed to send test email',
+      details: error.message,
+      stack: error.stack
+    })
   }
 })
 

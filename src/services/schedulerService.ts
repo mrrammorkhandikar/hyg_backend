@@ -103,21 +103,43 @@ export class SchedulerService {
       let successCount = 0
       let failureCount = 0
 
-      console.log(`📧 Sending email to ${recipients.length} recipients...`)
+      console.log(`📧 Starting to send email "${email.the_mail.subject}" to ${recipients.length} recipients`)
 
-      // Send email to all recipients
-      for (const recipient of recipients) {
-        try {
-          await sendEmail({
-            to: recipient.email,
-            subject: email.the_mail.subject,
-            html: email.the_mail.html
-          })
-          successCount++
-          console.log(`✅ Successfully sent to ${recipient.email}`)
-        } catch (emailError: any) {
-          console.error(`❌ Failed to send email to ${recipient.email}:`, emailError.message)
-          failureCount++
+      // Gmail rate limiting: max 50 emails per minute, 500 per day
+      const BATCH_SIZE = 10 // Send in batches of 10
+      const DELAY_BETWEEN_BATCHES = 2000 // 2 seconds between batches
+      const DELAY_BETWEEN_EMAILS = 500 // 0.5 seconds between individual emails
+
+      for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+        const batch = recipients.slice(i, i + BATCH_SIZE)
+        console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(recipients.length / BATCH_SIZE)} (${batch.length} emails)`)
+
+        // Send emails in this batch
+        for (const recipient of batch) {
+          try {
+            console.log(`📤 Sending to: ${recipient.email}`)
+            await sendEmail({
+              to: recipient.email,
+              subject: email.the_mail.subject,
+              html: email.the_mail.html
+            })
+            console.log(`✅ Successfully sent to: ${recipient.email}`)
+            successCount++
+
+            // Small delay between individual emails
+            if (i + batch.length < recipients.length) {
+              await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_EMAILS))
+            }
+          } catch (emailError: any) {
+            console.error(`❌ Failed to send email to ${recipient.email}:`, emailError.message)
+            failureCount++
+          }
+        }
+
+        // Delay between batches (except for the last batch)
+        if (i + BATCH_SIZE < recipients.length) {
+          console.log(`⏳ Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`)
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES))
         }
       }
 

@@ -21,14 +21,22 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     // Set default from address if not provided
     const from = options.from || process.env.SMTP_USER || process.env.GMAIL_USER || 'your-email@gmail.com';
 
-    // Prepare email options
+    // Prepare email options with improved headers for better deliverability
     const mailOptions = {
-      from: `"${from}" <${from}>`,
+      from: `"HygieneShelf" <${from}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text,
       attachments: options.attachments,
+      // Add headers to improve deliverability
+      headers: {
+        'X-Mailer': 'HygieneShelf Email System',
+        'X-Priority': '3', // Normal priority
+        'Importance': 'normal',
+        'List-Unsubscribe': '<mailto:unsubscribe@hygieneshelf.com>',
+        'Precedence': 'bulk'
+      }
     };
 
     // Verify transporter before sending

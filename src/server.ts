@@ -1,6 +1,9 @@
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv'
+const result = dotenv.config({ path: '.env' })
+
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import authRoutes from './routes/auth'
 import postsRoutes from './routes/posts'
 import uploadRoutes from './routes/upload'
@@ -25,8 +28,22 @@ import emailManagerRoutes from './routes/emailManager'
 import subscribersRoutes from './routes/subscribers'
 import analyticsRoutes from './routes/analytics'
 import './services/schedulerService'
+if (result.error) {
+  console.error('❌ Error loading .env file:', result.error)
+} else {
+  console.log('✅ .env file loaded successfully')
+}
 
-dotenv.config()
+// Debug: Log environment variables loading
+console.log('🔧 Environment variables loaded:')
+console.log('GMAIL_USER:', process.env.GMAIL_USER ? '✅ Set' : '❌ Not set')
+console.log('GMAIL_CLIENT_ID:', process.env.GMAIL_CLIENT_ID ? '✅ Set' : '❌ Not set')
+console.log('GMAIL_CLIENT_SECRET:', process.env.GMAIL_CLIENT_SECRET ? '✅ Set' : '❌ Not set')
+console.log('GMAIL_REFRESH_TOKEN:', process.env.GMAIL_REFRESH_TOKEN ? '✅ Set (length: ' + process.env.GMAIL_REFRESH_TOKEN?.length + ')' : '❌ Not set')
+console.log('SMTP_HOST:', process.env.SMTP_HOST ? '✅ Set' : '❌ Not set')
+console.log('SMTP_USER:', process.env.SMTP_USER ? '✅ Set' : '❌ Not set')
+console.log('SMTP_PASS:', process.env.SMTP_PASS ? '✅ Set (length: ' + process.env.SMTP_PASS?.length + ')' : '❌ Not set')
+console.log('Current working directory:', process.cwd())
 
 const app = express()
 // Use Render's PORT environment variable, fallback to 8080 for local development
