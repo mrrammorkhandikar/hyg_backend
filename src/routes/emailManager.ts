@@ -159,19 +159,15 @@ router.post('/', requireAdmin, async (req, res) => {
     if (scheduled_time) {
       // Handle different date formats
       let scheduledDate: Date;
-      
-      // Try to parse as ISO string first
-      if (typeof scheduled_time === 'string' && scheduled_time.includes('T')) {
-        scheduledDate = new Date(scheduled_time);
-      } else {
-        // Handle datetime-local format (YYYY-MM-DDTHH:mm)
-        scheduledDate = new Date(scheduled_time);
-      }
-      
+
+      // The frontend now sends UTC ISO strings, so just validate and use as-is
+      scheduledDate = new Date(scheduled_time);
+
       if (isNaN(scheduledDate.getTime())) {
         return res.status(400).json({ error: 'Invalid scheduled time format' })
       }
-      processedScheduledTime = scheduledDate.toISOString()
+      // Use the ISO string as provided (it's already in UTC)
+      processedScheduledTime = scheduled_time
     }
 
     // Prepare email data
@@ -236,21 +232,14 @@ router.put('/:id', requireAdmin, async (req, res) => {
     // Handle scheduled_time
     if (scheduled_time !== undefined) {
       if (scheduled_time) {
-        // Handle different date formats
-        let scheduledDate: Date;
-        
-        // Try to parse as ISO string first
-        if (typeof scheduled_time === 'string' && scheduled_time.includes('T')) {
-          scheduledDate = new Date(scheduled_time);
-        } else {
-          // Handle datetime-local format (YYYY-MM-DDTHH:mm)
-          scheduledDate = new Date(scheduled_time);
-        }
-        
+        // The frontend now sends UTC ISO strings, so just validate and use as-is
+        const scheduledDate = new Date(scheduled_time);
+
         if (isNaN(scheduledDate.getTime())) {
           return res.status(400).json({ error: 'Invalid scheduled time format' })
         }
-        updateData.scheduled_time = scheduledDate.toISOString()
+        // Use the ISO string as provided (it's already in UTC)
+        updateData.scheduled_time = scheduled_time
       } else {
         updateData.scheduled_time = null
       }
