@@ -157,16 +157,7 @@ router.post('/', requireAdmin, async (req, res) => {
     // Validate scheduled_time if provided
     let processedScheduledTime = null
     if (scheduled_time) {
-      // Handle different date formats
-      let scheduledDate: Date;
-
-      // The frontend now sends UTC ISO strings, so just validate and use as-is
-      scheduledDate = new Date(scheduled_time);
-
-      if (isNaN(scheduledDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid scheduled time format' })
-      }
-      // Use the ISO string as provided (it's already in UTC)
+      // Store the datetime directly as received from frontend
       processedScheduledTime = scheduled_time
     }
 
@@ -232,13 +223,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     // Handle scheduled_time
     if (scheduled_time !== undefined) {
       if (scheduled_time) {
-        // The frontend now sends UTC ISO strings, so just validate and use as-is
-        const scheduledDate = new Date(scheduled_time);
-
-        if (isNaN(scheduledDate.getTime())) {
-          return res.status(400).json({ error: 'Invalid scheduled time format' })
-        }
-        // Use the ISO string as provided (it's already in UTC)
+        // Store the datetime directly as received from frontend
         updateData.scheduled_time = scheduled_time
       } else {
         updateData.scheduled_time = null
