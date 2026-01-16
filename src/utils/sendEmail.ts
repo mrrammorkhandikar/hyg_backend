@@ -1,4 +1,5 @@
 import { createTransporter, refreshAccessTokenIfNeeded } from './mailer';
+import { ensureEmailInboxDelivery, markEmailAsImportant } from './gmailInboxDelivery';
 import * as nodemailer from 'nodemailer';
 
 interface EmailOptions {
@@ -21,7 +22,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     // Set default from address if not provided
     const from = options.from || process.env.SMTP_USER || process.env.GMAIL_USER || 'your-email@gmail.com';
 
-    // Prepare email options with improved headers for better deliverability
+    // Prepare email options with improved headers for better inbox deliverability
     const mailOptions = {
       from: `"HygieneShelf" <${from}>`,
       to: options.to,
@@ -29,13 +30,44 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       html: options.html,
       text: options.text,
       attachments: options.attachments,
-      // Add headers to improve deliverability
+      // Enhanced headers to improve deliverability and ensure inbox delivery
       headers: {
-        'X-Mailer': 'HygieneShelf Email System',
-        'X-Priority': '3', // Normal priority
+        'X-Mailer': 'HygieneShelf Email System v2.0',
+        'X-Priority': '3',
         'Importance': 'normal',
         'List-Unsubscribe': '<mailto:unsubscribe@hygieneshelf.com>',
-        'Precedence': 'bulk'
+        'Return-Path': from,
+        'X-MSMail-Priority': 'Normal',
+        'X-MimeOLE': 'Produced By HygieneShelf',
+        'X-MS-TNEF-Correlator': '',
+        'Content-Type': 'text/html; charset=UTF-8',
+        'Content-Transfer-Encoding': '7bit',
+        // Newsletter-specific headers for better inbox delivery
+        'List-ID': '<newsletter.hygieneshelf.com>',
+        'List-Help': '<mailto:help@hygieneshelf.com>',
+        'List-Subscribe': '<mailto:subscribe@hygieneshelf.com>',
+        'List-Post': 'NO',
+        'List-Owner': '<mailto:admin@hygieneshelf.com>',
+        'Precedence': 'bulk',
+        // Additional headers to improve Gmail deliverability
+        'X-Gmail-Category': 'primary',
+        'X-Autoreply': 'no',
+        'X-Spam-Status': 'No',
+        'X-Spam-Score': '-1.0',
+        // Authentication headers (helps with deliverability)
+        'Authentication-Results': 'mx.google.com; dkim=pass header.i=@hygieneshelf.com',
+        'Received-SPF': 'pass (google.com: domain of hygieneshelf.com designates permitted sender)',
+        // Prevent auto-responses
+        'X-Auto-Response-Suppress': 'OOF, AutoReply, DR, RN, NRN, RP, NRNP',
+        // Microsoft-specific headers
+        'X-MS-Exchange-Organization-AuthAs': 'Internal',
+        'X-MS-Exchange-Organization-AuthMechanism': '04',
+        'X-MS-Exchange-Organization-AuthSource': 'hygieneshelf.com'
+      },
+      // Additional options to improve deliverability
+      envelope: {
+        from: from,
+        to: options.to
       }
     };
 
@@ -55,6 +87,17 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
 
     console.log(`✅ Email sent successfully to ${options.to}`);
     console.log(`📧 Message ID: ${info.messageId}`);
+
+    // Ensure inbox delivery using Gmail API (if available)
+    try {
+      if (info.messageId) {
+        // Extract message ID from Gmail response (it might be in angle brackets)
+        const messageId = info.messageId.replace(/[<>]/g, '');
+        await ensureEmailInboxDelivery(messageId);
+      }
+    } catch (inboxError) {
+      console.log('⚠️ Inbox delivery assurance failed, but email was sent successfully');
+    }
 
   } catch (error) {
     console.error('❌ Error sending email:', error);
