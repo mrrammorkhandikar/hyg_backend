@@ -43,7 +43,15 @@ router.get('/', async (req, res) => {
     }
 
     if (published !== undefined) {
-      query = query.eq('published', published === 'true')
+      if (published === 'scheduled') {
+        // Filter for scheduled posts: unpublished posts with future shedule_publish date
+        query = query
+          .eq('published', false)
+          .not('shedule_publish', 'is', null)
+          .gt('shedule_publish', new Date().toISOString())
+      } else {
+        query = query.eq('published', published === 'true')
+      }
     }
 
     // Apply sorting
@@ -54,6 +62,8 @@ router.get('/', async (req, res) => {
       query = query.order('published', { ascending })
     } else if (sortBy === 'updated_at') {
       query = query.order('updated_at', { ascending })
+    } else if (sortBy === 'scheduled') {
+      query = query.order('shedule_publish', { ascending })
     } else {
       query = query.order('date', { ascending })
     }

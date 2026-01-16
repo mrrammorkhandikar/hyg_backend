@@ -10,7 +10,7 @@ interface NewsletterWelcomeEmailOptions {
  * Send an attractive welcome email to new newsletter subscribers
  */
 export async function sendNewsletterWelcomeEmail(options: NewsletterWelcomeEmailOptions): Promise<void> {
-  const subject = '🎉 Welcome to HygieneShelf - Your Health Journey Starts Here!';
+  const subject = 'Welcome to Hygiene Shelf 🌿 You\'re officially in';
   const from = options.from || process.env.GMAIL_USER || 'hygieneshelf.news@gmail.com';
 
   // HygieneShelf brand colors
@@ -89,7 +89,7 @@ export async function sendNewsletterWelcomeEmail(options: NewsletterWelcomeEmail
                 <td>
                   <div style="text-align: center; margin-bottom: 20px;">
                     <!-- HygieneShelf Logo -->
-                    <img src="https://hygieneshef.com/images/TheLogo.jpeg" alt="HygieneShelf Logo" style="width: 80px; height: 80px; border-radius: 50%; background: white; padding: 8px;">
+                    <img src="https://hygieneshelf.in/Images/thelogohy.jpeg" alt="HygieneShelf Logo" style="width: 80px; height: 80px; border-radius: 50%; background: white; padding: 8px;">
                   </div>
                   <h1>✨ Welcome to HygieneShelf!</h1>
                   <p style="margin: 15px 0 0 0; font-size: 18px; color: rgba(255,255,255,0.9); font-weight: 600;">
@@ -103,85 +103,75 @@ export async function sendNewsletterWelcomeEmail(options: NewsletterWelcomeEmail
             <table role="presentation" class="content">
               <tr>
                 <td>
-                  <div style="text-align: center; margin-bottom: 30px;">
-                    <span class="badge">🎉 You're In!</span>
-                    <span class="badge">📧 Newsletter Subscriber</span>
-                  </div>
-
-                  <h2 style="text-align: center; margin-bottom: 25px;">Hello ${options.name || 'Health Enthusiast'}! 👋</h2>
-                  
-                  <p style="font-size: 18px; line-height: 1.7; text-align: center;">
-                    Welcome to the <span class="highlight">HygieneShelf family</span>! 🌿<br>
-                    You've just taken the first step towards a healthier, happier you.
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    Hi there,
                   </p>
 
-                  <div class="card">
-                    <div class="card-icon">🎁</div>
-                    <h3>What's Coming Your Way</h3>
-                    <p style="margin-bottom: 20px;">Get ready for exclusive content delivered straight to your inbox:</p>
-                    
-                    <div class="benefit-item">
-                      <span class="benefit-icon">🔬</span>
-                      <div class="benefit-content">
-                        <h4>Expert Health Insights</h4>
-                        <p>From Dr. Bushra Mirza - evidence-based tips you can trust</p>
-                      </div>
-                    </div>
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    Welcome to <strong>Hygiene Shelf</strong> — I'm genuinely glad you're here.
+                  </p>
 
-                    <div class="benefit-item">
-                      <span class="benefit-icon">💡</span>
-                      <div class="benefit-content">
-                        <h4>Practical Wellness Tips</h4>
-                        <p>Easy-to-implement strategies for daily health improvements</p>
-                      </div>
-                    </div>
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    You've just joined a growing community of people who believe that <strong>better hygiene leads to better health, calmer minds, and stronger daily habits</strong> — without fear, fluff, or confusion.
+                  </p>
 
-                    <div class="benefit-item">
-                      <span class="benefit-icon">🌟</span>
-                      <div class="benefit-content">
-                        <h4>Exclusive Content</h4>
-                        <p>Subscriber-only guides, offers, and early access</p>
-                      </div>
-                    </div>
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    At Hygiene Shelf, you'll find:
+                  </p>
 
-                    <div class="benefit-item">
-                      <span class="benefit-icon">🤝</span>
-                      <div class="benefit-content">
-                        <h4>Community Access</h4>
-                        <p>Invitations to webinars, events, and Q&A sessions</p>
-                      </div>
-                    </div>
-                  </div>
+                  <ul style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
+                    <li style="margin-bottom: 10px;"><strong>Evidence-based hygiene & wellness guidance</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Practical routines you can actually follow</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Honest product recommendations (no hype, no pressure)</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Simple tools to improve oral, mental, personal, and home hygiene</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Insights designed especially for busy Indian lifestyles</strong></li>
+                  </ul>
+
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    Think of this newsletter as your <strong>weekly reset button</strong> — a space where health feels clear, doable, and grounded in science.
+                  </p>
+
+                  <h3 style="font-size: 20px; font-weight: 700; color: ${primaryColor}; margin: 30px 0 15px 0;">What to expect from me:</h3>
+
+                  <ul style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
+                    <li style="margin-bottom: 10px;"><strong>Short, useful reads (not spammy emails)</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Actionable hygiene habits you can apply the same day</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Early access to planners, checklists, and challenges</strong></li>
+                    <li style="margin-bottom: 10px;"><strong>Occasional product guides that save you time and money</strong></li>
+                  </ul>
+
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    As a healthcare professional, my goal is simple:
+                    to help you make <strong>small, consistent hygiene choices</strong> that protect your long-term health.
+                  </p>
 
                   <div style="text-align: center; margin: 40px 0;">
-                    <a href="https://hygieneshef.com" class="btn">Explore Our Website</a>
+                    <p style="font-size: 18px; line-height: 1.7; margin-bottom: 20px;">
+                      <strong>👉 Start here:</strong>
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.6;">
+                      If you haven't already, download your <strong>free 7-Day Morning Hygiene Reset Planner</strong> and try it for the next week. It's designed to fit into real mornings, not ideal ones.
+                    </p>
                   </div>
 
-                  <div class="card" style="border-color: #dbeafe; background-color: #eff6ff;">
-                    <div class="card-icon">✨</div>
-                    <h3>Your First Gift: Health Tips</h3>
-                    <p style="margin-bottom: 15px;"><strong>Quick Health Tip:</strong> Stay hydrated! Aim for 8 glasses of water daily to boost energy, improve skin, and support overall wellness.</p>
-                    <p style="margin: 0; font-style: italic; color: ${secondaryColor};">"Health is not just about what you're unable to eat, but what you can eat." - Dr. Bushra Mirza</p>
-                  </div>
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    If you ever have a question, topic request, or hygiene struggle you want covered — just reply to this email. I read them personally.
+                  </p>
+
+                  <p style="font-size: 18px; line-height: 1.7;">
+                    Thank you for trusting Hygiene Shelf.
+                    This is just the beginning.
+                  </p>
 
                   <div style="text-align: center; margin-top: 30px;">
-                    <p style="margin-bottom: 15px; font-weight: 700; color: ${primaryColor};">Follow Us for More Health Inspiration</p>
-                    <div class="social-links">
-                      <a href="https://facebook.com/hygieneshef" class="social-link">
-                        <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook">
-                      </a>
-                      <a href="https://instagram.com/hygieneshef" class="social-link">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram">
-                      </a>
-                      <a href="https://twitter.com/hygieneshef" class="social-link">
-                        <img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter">
-                      </a>
-                    </div>
-                  </div>
-
-                  <div style="text-align: center; margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb;">
-                    <p style="margin-bottom: 10px; font-weight: 700;">Questions? We're Here to Help!</p>
-                    <p style="margin: 0; font-size: 14px; color: ${lightText};">Reply to this email or visit our <a href="https://hygieneshef.com/contact" style="color: ${primaryColor}; text-decoration: none;">Contact Page</a></p>
+                    <p style="font-size: 18px; line-height: 1.7; font-weight: 600;">
+                      Warmly,<br>
+                      <strong>Dr. Bushra Mirza</strong>
+                    </p>
+                    <p style="font-size: 16px; color: ${lightText}; margin-top: 10px;">
+                      Founder, Hygiene Shelf<br>
+                      Healthcare Professional & Medical Writer
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -192,7 +182,7 @@ export async function sendNewsletterWelcomeEmail(options: NewsletterWelcomeEmail
               <tr>
                 <td>
                   <div style="margin-bottom: 15px;">
-                    <img src="https://hygieneshef.com/images/TheLogo.jpeg" alt="HygieneShelf Logo" style="width: 50px; height: 50px; border-radius: 50%; background: white; padding: 6px; border: 1px solid #e2e8f0;">
+                    <img src="https://hygieneshelf.in/Images/thelogohy.jpeg" alt="HygieneShelf Logo" style="width: 50px; height: 50px; border-radius: 50%; background: white; padding: 6px; border: 1px solid #e2e8f0;">
                   </div>
                   <p style="margin: 0 0 10px 0; font-weight: 700;">HygieneShelf</p>
                   <p style="margin: 0 0 15px 0; font-size: 14px;">Your Partner in Health & Wellness</p>
