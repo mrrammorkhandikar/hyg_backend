@@ -92,19 +92,112 @@ router.get('/', async (req, res) => {
 // GET /posts/:id (by id)
 router.get('/:id', async (req, res) => {
   const { id } = req.params
-  const { data, error } = await supabase.from('posts').select('*').eq('id', id).maybeSingle()
-  if (error) return res.status(500).json({ error: error.message })
-  if (!data) return res.status(404).json({ error: 'Not found' })
-  res.json(data)
+  
+  // First get the post
+  let { data: postData, error: postError } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  
+  if (postError) return res.status(500).json({ error: postError.message })
+  if (!postData) return res.status(404).json({ error: 'Not found' })
+  
+  // If the post has tags as an array of IDs, fetch the actual tag names
+  if (postData.tags && Array.isArray(postData.tags) && postData.tags.length > 0) {
+    try {
+      // Check if any of the tags are UUIDs (meaning they need to be resolved to names)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const hasUUIDs = postData.tags.some((tag: any) => typeof tag === 'string' && uuidRegex.test(tag));
+      
+      if (hasUUIDs) {
+        // If some tags are UUIDs, fetch the actual tag names
+        const uuidTags = postData.tags.filter((tag: any) => typeof tag === 'string' && uuidRegex.test(tag));
+        
+        const { data: tagData, error: tagError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('id', uuidTags);
+        
+        if (!tagError && tagData) {
+          // Create a map of UUID to tag name for easy lookup
+          const tagMap: { [key: string]: string } = {};
+          tagData.forEach(tag => {
+            tagMap[tag.id] = tag.name;
+          });
+          
+          // Replace UUIDs with tag names, keep non-UUIDs as they are
+          postData.tags = postData.tags.map((tag: any) => {
+            if (typeof tag === 'string' && uuidRegex.test(tag) && tagMap[tag]) {
+              return tagMap[tag];
+            }
+            return tag;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tag names:', error);
+      // Continue with original tags if there's an error
+    }
+  }
+  
+  res.json(postData)
 })
 
 // GET /posts/slug/:slug (by slug)
 router.get('/slug/:slug', async (req, res) => {
   const { slug } = req.params
-  const { data, error } = await supabase.from('posts').select('*').eq('slug', slug).eq('published', true).maybeSingle()
-  if (error) return res.status(500).json({ error: error.message })
-  if (!data) return res.status(404).json({ error: 'Not found' })
-  res.json(data)
+  
+  // First get the post
+  let { data: postData, error: postError } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('slug', slug)
+    .eq('published', true)
+    .maybeSingle()
+  
+  if (postError) return res.status(500).json({ error: postError.message })
+  if (!postData) return res.status(404).json({ error: 'Not found' })
+  
+  // If the post has tags as an array of IDs, fetch the actual tag names
+  if (postData.tags && Array.isArray(postData.tags) && postData.tags.length > 0) {
+    try {
+      // Check if any of the tags are UUIDs (meaning they need to be resolved to names)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const hasUUIDs = postData.tags.some((tag: any) => typeof tag === 'string' && uuidRegex.test(tag));
+      
+      if (hasUUIDs) {
+        // If some tags are UUIDs, fetch the actual tag names
+        const uuidTags = postData.tags.filter((tag: any) => typeof tag === 'string' && uuidRegex.test(tag));
+        
+        const { data: tagData, error: tagError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('id', uuidTags);
+        
+        if (!tagError && tagData) {
+          // Create a map of UUID to tag name for easy lookup
+          const tagMap: { [key: string]: string } = {};
+          tagData.forEach(tag => {
+            tagMap[tag.id] = tag.name;
+          });
+          
+          // Replace UUIDs with tag names, keep non-UUIDs as they are
+          postData.tags = postData.tags.map((tag: any) => {
+            if (typeof tag === 'string' && uuidRegex.test(tag) && tagMap[tag]) {
+              return tagMap[tag];
+            }
+            return tag;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tag names:', error);
+      // Continue with original tags if there's an error
+    }
+  }
+  
+  res.json(postData)
 })
 
 // POST /posts (create)
@@ -131,7 +224,7 @@ router.post('/', requireAuthenticated, restrictAuthorActions, async (req, res) =
 
   // Allow scheduling fields for admins during creation
   const allowedInsertKeys = [
-    'title','excerpt','content','content_blocks','category_id','tags',
+    'title','excerpt','content','content_blocks','category','category_id','tags',
     'image_url','seo_title','seo_description','seo_keywords','affiliate_links',
     'published','featured','author','shedule_publish'
   ]
@@ -167,7 +260,7 @@ router.put('/:id', requirePostAccess, restrictAuthorActions, async (req, res) =>
   updates.updated_at = new Date().toISOString()
 
   const allowedKeys = [
-    'title','excerpt','content','content_blocks','category_id','tags',
+    'title','excerpt','content','content_blocks','category','category_id','tags',
     'image_url','seo_title','seo_description','seo_keywords','affiliate_links',
     'published','featured','author','updated_at','shedule_publish'
   ]

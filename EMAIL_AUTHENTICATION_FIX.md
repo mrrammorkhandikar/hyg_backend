@@ -101,8 +101,8 @@ SMTP_PASS=your-app-password
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_SECURE=false
-   SMTP_USER=morkhandikars@gmail.com
-   SMTP_PASS=your-16-character-app-password
+   SMTP_USER=iammrrammorkhandikar@gmail.com
+   SMTP_PASS=kttr odlz xwbq prop
    ```
 
 3. **Restart backend:**
